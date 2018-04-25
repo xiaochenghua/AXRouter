@@ -1,0 +1,45 @@
+//
+//  AXRouterDemo.pch
+//  AXRouterDemo
+//
+//  Created by arnoldxiao on 2018/3/22.
+//  Copyright © 2018年 arnoldxiao. All rights reserved.
+//
+
+#ifndef AXRouterDemo_pch
+#define AXRouterDemo_pch
+
+// Include any system framework and library headers here that should be included in all compilation units.
+// You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
+
+#pragma mark - Import
+#import "AXRouter.h"
+
+#pragma mark - Macro
+//  自定义颜色
+#define AXColor(r, g, b) [UIColor colorWithRed:(r)/255.0 green:(g)/255.0 blue:(b)/255.0 alpha:1]
+#define AXColorWithAlpha(r, g, b, a) [UIColor colorWithRed:(r)/255.0 green:(g)/255.0 blue:(b)/255.0 alpha:a]
+
+//  随机色
+#define AXRandomColor [UIColor colorWithRed:(arc4random_uniform(256))/255.0 green:(arc4random_uniform(256))/255.0 blue:(arc4random_uniform(256))/255.0 alpha:1]
+#define AXRandomColorWithAlpha(a) [UIColor colorWithRed:(arc4random_uniform(256))/255.0 green:(arc4random_uniform(256))/255.0 blue:(arc4random_uniform(256))/255.0 alpha:a]
+
+//  设备
+#define iPhoneX ([UIScreen instancesRespondToSelector:@selector(currentMode)] ? CGSizeEqualToSize(CGSizeMake(1125, 2436), [[UIScreen mainScreen] currentMode].size) : NO)
+
+#define AXScreenWidth       [UIScreen mainScreen].bounds.size.width
+#define AXScreenHeight      [UIScreen mainScreen].bounds.size.height
+#define AXNavigationHeight  (iPhoneX ? 44.0f + 44.0f : 20.0f + 44.0f)
+
+//  以iPhone SE尺寸为基准
+#define AXStandardSize              CGSizeMake(320.0f, 568.0f)
+#define AXAutoScaleWidthModulus     (AXScreenWidth / AXStandardSize.width)
+#define AXAutoScaleHeightModulus    (AXScreenHeight / AXStandardSize.height)
+#define AXAutoScaleAverageModulus   (((AXAutoScaleWidthModulus) + (AXAutoScaleHeightModulus)) / 2)
+#define AXAutoScaleWidth(w)         (AXAutoScaleWidthModulus * (w))
+#define AXAutoScaleHeight(h)        (AXAutoScaleHeightModulus * (h))
+#define AXAutoScaleSize(s)          (AXAutoScaleAverageModulus * (s))
+#define AXAutoScaleFont(f)          [UIFont systemFontOfSize:AXAutoScaleSize(f)]
+#define AXAutoScaleFontBold(f)      [UIFont boldSystemFontOfSize:AXAutoScaleSize(f)]
+
+#endif /* AXRouterDemo_pch */
