@@ -13,6 +13,9 @@
 @property (nonatomic, strong, nullable) Class class;
 @end
 
+static NSString * const kPropertyUrlKey     = @"url";
+static NSString * const kPropertyClassKey   = @"class";
+
 @implementation AXRouterRegister
 
 + (instancetype)registerWithUrl:(NSString *)url class:(Class)class {
@@ -37,6 +40,20 @@
 
 - (nullable Class)formatClassWithClass:(Class)cls {
     return [cls isSubclassOfClass:UIViewController.class] ? cls : nil;
+}
+
+//  Archiver
+- (instancetype)initWithCoder:(NSCoder *)aDecoder {
+    if (self = [super init]) {
+        self.url = [aDecoder decodeObjectForKey:kPropertyUrlKey];
+        self.class = [aDecoder decodeObjectForKey:kPropertyClassKey];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder {
+    [aCoder encodeObject:self.url forKey:kPropertyUrlKey];
+    [aCoder encodeObject:self.class forKey:kPropertyClassKey];
 }
 
 - (NSString *)description {
