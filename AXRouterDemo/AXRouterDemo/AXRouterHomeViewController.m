@@ -60,6 +60,8 @@ static NSString * const kTableViewCellIdentifier = @"TableViewCellIdentifier";
             break;
         }
     }
+    
+    NSLog(@"\nregisiters:\n%@", [AXRouterManager manager].registers);
 }
 
 - (UITableView *)tableView {
