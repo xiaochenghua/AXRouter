@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface AXRouterRegister : NSObject <NSCoding>
 
 @property (nonatomic, copy, nullable, readonly) NSString *url;
-@property (nonatomic, strong, nullable, readonly) Class class;
+@property (nonatomic, copy, nullable, readonly) NSString *className;
 
 + (instancetype)registerWithUrl:(NSString *)url class:(Class)class;
 

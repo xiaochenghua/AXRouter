@@ -10,21 +10,20 @@
 #import "AXRouterRegister.h"
 #import "NSMutableDictionary+AXSemaphore.h"
 
-NSString * const kAXRouterUrlKey = @"AXRouterUrlKey";
-NSString * const kAXRouterClassKey = @"AXRouterClassKey";
 static NSString * const kAXRouterRegularExpression = @"^[+-]?[0-9]+(.[0-9]+)?$";
-static NSString * const kAXRouterStorageKey = @"AXRouterStorageKey";
+static NSString * const kAXRouterRegistersKey = @"AXRouterRegistersKey";
 
-#define WEAKSELF    __weak typeof(self) weakSelf = self
-#define STRONGSELF  __strong typeof(weakSelf) self = weakSelf
+//#define WEAKSELF    __weak typeof(self) weakSelf = self
+//#define STRONGSELF  __strong typeof(weakSelf) self = weakSelf
 
 @interface AXRouterManager ()
 @property (nonatomic, copy) NSString *url;
 @property (nonatomic) UINavigationController *navigationController;
 @property (nonatomic) UIViewController *topViewController;
 @property (nonatomic) UIViewController *visibleViewController;
-@property (nonatomic) NSMutableArray<NSDictionary<NSString *, NSString *> *> *parameterArray;
 @property (nonatomic) dispatch_queue_t registerQueue;
+@property (nonatomic) NSMutableArray<NSData *> *registerMutableArray;
+@property (nonatomic, copy) NSArray<NSData *> *registers;
 @end
 
 @implementation AXRouterManager
@@ -47,105 +46,75 @@ static AXRouterManager *_instance = nil;
     return _instance;
 }
 
-- (void)dealloc {
-    [self.parameterArray removeAllObjects];
-    [[NSUserDefaults standardUserDefaults] setObject:self.parameterArray.copy forKey:kAXRouterStorageKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
 #pragma mark - register
 - (void)addRegisters:(NSArray<AXRouterRegister *> *)regs {
-    WEAKSELF;
-    dispatch_async(self.registerQueue, ^{
-        STRONGSELF;
-        for (AXRouterRegister *reg in regs) {
-            [self singleTaskWithRegister:reg];
-        }
-    });
+    for (AXRouterRegister *reg in regs) {
+        [self archiveDataWithRegister:reg];
+    }
 }
 
 - (void)addRegister:(AXRouterRegister *)reg {
-    WEAKSELF;
-    dispatch_async(self.registerQueue, ^{
-        STRONGSELF;
-        [self singleTaskWithRegister:reg];
-    });
+    [self archiveDataWithRegister:reg];
 }
 
-- (void)singleTaskWithRegister:(AXRouterRegister *)reg {
-    if (!reg.url || !reg.class) {
+- (void)archiveDataWithRegister:(AXRouterRegister *)reg {
+    if (!reg.url || !reg.className) {
         return;
     }
     
-    NSArray<NSDictionary<NSString *, NSString *> *> *tmpArray = (NSArray *)[[NSUserDefaults standardUserDefaults] objectForKey:kAXRouterStorageKey];
-    for (NSDictionary<NSString *, NSString *> *dic in tmpArray) {
-        if ([reg.url isEqualToString:dic[kAXRouterUrlKey]] && [NSStringFromClass(reg.class) isEqualToString:dic[kAXRouterClassKey]]) {
+    NSArray<NSData *> *tmpArray = (NSArray<NSData *> *)[[NSUserDefaults standardUserDefaults] objectForKey:kAXRouterRegistersKey];
+    
+    //  tmpArray有值才需要做以下操作
+    for (NSData *data in tmpArray) {
+        AXRouterRegister *rr = (AXRouterRegister *)[NSKeyedUnarchiver unarchiveObjectWithData:data];
+        if ([reg.url isEqualToString:rr.url] && [reg.className isEqualToString:rr.className]) {
             return;
         }
+        //  url相等，class不等的情况下需要覆盖class，后期再做
     }
     
-    [self parseUrl:reg.url class:reg.class];
+    [self.registerMutableArray addObject:[NSKeyedArchiver archivedDataWithRootObject:reg]];
     
-    [[NSUserDefaults standardUserDefaults] setObject:self.parameterArray.copy forKey:kAXRouterStorageKey];
+    [[NSUserDefaults standardUserDefaults] setObject:self.registers forKey:kAXRouterRegistersKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
-- (void)parseUrl:(NSString *)url class:(nonnull Class)class {
-    NSMutableDictionary<NSString *, NSString *> *dictionary = [NSMutableDictionary dictionary];
-    
-    NSArray<NSString *> *destSchemeArray = [url componentsSeparatedByString:@"://"];
-    if (destSchemeArray.count != 2) { return; }
-    if (![[self urlSchemes] containsObject:destSchemeArray.firstObject]) { return; }
-    
-    [dictionary ax_setValue:url forKey:kAXRouterUrlKey];
-    [dictionary ax_setValue:NSStringFromClass(class) forKey:kAXRouterClassKey];
-    [self.parameterArray addObject:dictionary];
-}
-
-- (NSArray<NSString *> *)urlSchemes {
-    NSArray *urlTypes = (NSArray *)[[NSBundle mainBundle] infoDictionary][@"CFBundleURLTypes"];
-    NSMutableArray *mutableArray = [NSMutableArray array];
-    for (NSDictionary *dict in urlTypes) {
-        [mutableArray addObjectsFromArray:(NSArray *)dict[@"CFBundleURLSchemes"]];
-    }
-    return mutableArray.copy;
 }
 
 #pragma mark - openUrl
 - (void)openUrl:(NSString *)url {
-    [self openUrl:url type:AXRouterTypePush];
+    [self openUrl:url mode:AXRouterModePush];
 }
 
-- (void)openUrl:(NSString *)url type:(AXRouterType)type {
-    NSArray *storedArray = [[NSUserDefaults standardUserDefaults] objectForKey:kAXRouterStorageKey];
-    if (!storedArray || !storedArray.count) { return; }
+- (void)openUrl:(NSString *)url mode:(AXRouterMode)mode {
+    NSArray<NSData *> *tmpArray = (NSArray<NSData *> *)[[NSUserDefaults standardUserDefaults] objectForKey:kAXRouterRegistersKey];
+    if (!tmpArray || !tmpArray.count) { return; }
     
-    Class class = nil;
-    NSString *formatUrl = [url componentsSeparatedByString:@"?"].firstObject ?: @"";
-    for (NSDictionary<NSString *, NSString *> *dic in storedArray) {
-        if ([formatUrl isEqualToString:dic[kAXRouterUrlKey]]) {
-            class = NSClassFromString(dic[kAXRouterClassKey]);
+    Class cls = nil;
+    NSString *formatUrl = (NSString *)[url componentsSeparatedByString:@"?"].firstObject;
+    
+    for (NSData *data in tmpArray) {
+        AXRouterRegister *rr = (AXRouterRegister *)[NSKeyedUnarchiver unarchiveObjectWithData:data];
+        if ([formatUrl isEqualToString:rr.url]) {
+            cls = NSClassFromString(rr.className);
             break;
         }
     }
     
-    if (!class) { return; }
+    if (!cls) { return; }
     
-    UIViewController *viewController = (UIViewController *)[[class alloc] init];
+    UIViewController *viewController = (UIViewController *)[[cls alloc] init];
     viewController.routerParameter = [self routerParameterWithUrl:url];
     viewController.hidesBottomBarWhenPushed = YES;
     
-    if (viewController) {
-        switch (type) {
-            case AXRouterTypePush: {
-                [self dismissAllPresentedViewControllers];           //  确保当前没有presentedViewController
-                [self.navigationController pushViewController:viewController animated:YES];
-                break;
-            }
-            case AXRouterTypePresent: {
-                [self.visibleViewController presentViewController:viewController animated:YES completion:nil];
-                break;
-            }
+    switch (mode) {
+        case AXRouterModePush: {
+            [self dismissAllPresentedViewControllers];           //  确保当前没有presentedViewController
+            [self.navigationController pushViewController:viewController animated:YES];
+            break;
+        }
+            
+        case AXRouterModePresent: {
+            [self.visibleViewController presentViewController:viewController animated:YES completion:nil];
+            break;
         }
     }
 }
@@ -225,18 +194,22 @@ static AXRouterManager *_instance = nil;
 }
 
 #pragma mark - lazy loading
-- (NSMutableArray<NSDictionary<NSString *,NSString *> *> *)parameterArray {
-    if (!_parameterArray) {
-        _parameterArray = [NSMutableArray array];
-    }
-    return _parameterArray;
-}
-
 - (dispatch_queue_t)registerQueue {
     if (!_registerQueue) {
         _registerQueue = dispatch_queue_create("axrouter.register", DISPATCH_QUEUE_SERIAL);
     }
     return _registerQueue;
+}
+
+- (NSMutableArray<NSData *> *)registerMutableArray {
+    if (!_registerMutableArray) {
+        _registerMutableArray = [NSMutableArray array];
+    }
+    return _registerMutableArray;
+}
+
+- (NSArray<NSData *> *)registers {
+    return self.registerMutableArray.copy;
 }
 
 @end

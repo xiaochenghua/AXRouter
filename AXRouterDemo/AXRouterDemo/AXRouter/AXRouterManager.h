@@ -11,12 +11,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-extern NSString * const kAXRouterUrlKey;
-extern NSString * const kAXRouterClassKey;
-
-typedef NS_ENUM(NSInteger, AXRouterType) {
-    AXRouterTypePush,
-    AXRouterTypePresent,
+typedef NS_ENUM(NSInteger, AXRouterMode) {
+    AXRouterModePush,
+    AXRouterModePresent,
 };
 
 @class AXRouterRegister;
@@ -29,6 +26,8 @@ typedef NS_ENUM(NSInteger, AXRouterType) {
 /** 返回当前屏幕可见的容器 */
 @property (nonatomic, readonly) UIViewController *visibleViewController;
 
+@property (nonatomic, copy, readonly) NSArray<NSData *> *registers;
+
 + (instancetype)manager;
 
 - (void)addRegister:(AXRouterRegister *)reg;
@@ -37,7 +36,7 @@ typedef NS_ENUM(NSInteger, AXRouterType) {
 
 - (void)openUrl:(NSString *)url;
 
-- (void)openUrl:(NSString *)url type:(AXRouterType)type;
+- (void)openUrl:(NSString *)url mode:(AXRouterMode)mode;
 
 @end
 
