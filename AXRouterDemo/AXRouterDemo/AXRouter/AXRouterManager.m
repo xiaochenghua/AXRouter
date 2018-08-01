@@ -64,8 +64,15 @@ static AXRouterManager *_instance = nil;
     
     NSArray<NSData *> *tmpArray = (NSArray<NSData *> *)[[NSUserDefaults standardUserDefaults] objectForKey:kAXRouterRegistersKey];
     
+    //  加载已有的注册
+//    [self.registerMutableArray addObjectsFromArray:tmpArray];
+    
     //  tmpArray有值才需要做以下操作
     for (NSData *data in tmpArray) {
+        if (![self.registerMutableArray containsObject:data]) {
+            [self.registerMutableArray addObject:data];
+        }
+        
         AXRouterRegister *rr = (AXRouterRegister *)[NSKeyedUnarchiver unarchiveObjectWithData:data];
         if ([reg.url isEqualToString:rr.url] && [reg.className isEqualToString:rr.className]) {
             return;
